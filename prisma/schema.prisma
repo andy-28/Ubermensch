@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  
-  posts     Post[]   // 👈 一個使用者可以有多篇 Post
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String
+  isVerified        Boolean   @default(false)
+  verifyCode        String? // 6 碼驗證碼（註冊後產生）
+  verifyCodeExpires DateTime? // 驗證碼到期時間（例如 10 分鐘）
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  posts Post[] // 👈 一個使用者可以有很多 Post
 }
 
 model Post {
@@ -31,5 +33,5 @@ model Post {
   authorId  Int
   createdAt DateTime @default(now())
 
-  author    User     @relation(fields: [authorId], references: [id])
+  author User @relation(fields: [authorId], references: [id])
 }
