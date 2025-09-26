@@ -14,7 +14,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: "缺少必要欄位" }, { status: 400 });
         }
 
-        const exist = await prisma.user.findUnique({ where: { email } });
+        const exist = await prisma.user.findUnique({ where: { Email: email } });
         if (exist) {
             return NextResponse.json({ success: false, message: "Email 已被註冊" }, { status: 400 });
         }
@@ -25,13 +25,14 @@ export async function POST(req: Request) {
 
         await prisma.user.create({
             data: {
-                email,
-                password: hashed,
-                isVerified: false,
-                verifyCode: code,
-                verifyCodeExpires: expires,
+                Email: email,
+                Password: hashed,
+                IsVerified: false,
+                VerifyCode: code,
+                VerifyCodeExpires: expires,
             },
         });
+
 
         // 方便本地測試：把驗證碼也回傳（或用 console.log）
         return NextResponse.json({

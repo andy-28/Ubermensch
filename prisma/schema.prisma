@@ -14,25 +14,46 @@ datasource db {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  email             String    @unique
-  password          String
-  role              String    @default("user")
-  isVerified        Boolean   @default(false)
-  verifyCode        String? // 6 碼驗證碼（註冊後產生）
-  verifyCodeExpires DateTime? // 驗證碼到期時間（例如 10 分鐘）
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  ID                Int       @id @default(autoincrement()) @map("ID")
+  Email             String    @unique @map("EMAIL")
+  Password          String    @map("PASSWORD")
+  Role              String    @default("user") @map("ROLE")
+  IsVerified        Boolean   @default(false) @map("IS_VERIFIED")
+  VerifyCode        String?   @map("VERIFY_CODE")
+  VerifyCodeExpires DateTime? @map("VERIFY_CODE_EXPIRES")
+  CreatedAt         DateTime  @default(now()) @map("CREATED_AT")
+  UpdatedAt         DateTime  @updatedAt @map("UPDATED_AT")
 
-  posts Post[] // 👈 一個使用者可以有很多 Post
+  Posts Post[]   // ❌ 不要 @map
+  Tasks Task[]   // ❌ 不要 @map
+
+  @@map("USER") // DB table name
 }
 
 model Post {
-  id        Int      @id @default(autoincrement())
-  title     String
-  content   String
-  authorId  Int
-  createdAt DateTime @default(now())
+  ID        Int      @id @default(autoincrement()) @map("ID")
+  Title     String   @map("TITLE")
+  Content   String   @map("CONTENT")
+  AuthorID  Int      @map("AUTHOR_ID")
+  CreatedAt DateTime @default(now()) @map("CREATED_AT")
 
-  author User @relation(fields: [authorId], references: [id])
+  Author User @relation(fields: [AuthorID], references: [ID])
+
+  @@map("POST")
+}
+
+model Task {
+  ID          Int      @id @default(autoincrement()) @map("ID")
+  Title       String   @map("TITLE")
+  Description String?  @map("DESCRIPTION")
+  Status      String   @default("todo") @map("STATUS")
+  Priority    String   @default("normal") @map("PRIORITY")
+  DueDate     DateTime? @map("DUE_DATE")
+  CreatedAt   DateTime @default(now()) @map("CREATED_AT")
+  UpdatedAt   DateTime @updatedAt @map("UPDATED_AT")
+  UserID      Int?     @map("USER_ID")
+
+  User User? @relation(fields: [UserID], references: [ID])
+
+  @@map("TASK")
 }
