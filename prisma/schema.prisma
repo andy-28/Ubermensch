@@ -17,6 +17,7 @@ model User {
   id                Int       @id @default(autoincrement())
   email             String    @unique
   password          String
+  role              String    @default("user")
   isVerified        Boolean   @default(false)
   verifyCode        String? // 6 碼驗證碼（註冊後產生）
   verifyCodeExpires DateTime? // 驗證碼到期時間（例如 10 分鐘）

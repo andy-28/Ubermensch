@@ -21,7 +21,7 @@ export default function LoginPage() {
         if (data.success) {
             localStorage.setItem("userEmail", data.user.email);
             alert("登入成功");
-            router.push("/dashboard");
+            router.push("/admin/users");
         } else {
             alert(data.message);
             if (res.status === 403) {
