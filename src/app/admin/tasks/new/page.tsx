@@ -15,6 +15,8 @@ type Task = {
     Priority: string;
     DueDate: string | null;
     CreatedAt: string;
+    IsInbox: boolean;
+    Tags: string[] | null; // ✅ 支援標籤
 };
 
 const columns = {
@@ -23,7 +25,6 @@ const columns = {
     done: "完成",
 };
 
-// 優先順序的排序權重
 const priorityOrder: Record<string, number> = {
     high: 1,
     normal: 2,
@@ -36,7 +37,11 @@ export default function TaskPage() {
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState("normal");
     const [dueDate, setDueDate] = useState("");
-    const [sortBy, setSortBy] = useState("created"); // 預設排序
+    const [tags, setTags] = useState(""); // ✅ 新標籤輸入 (字串)
+    const [selectedTags, setSelectedTags] = useState<string[]>([]); // ✅ 勾選現有標籤
+    const [allTags, setAllTags] = useState<string[]>([]);
+    const [sortBy, setSortBy] = useState("created");
+    const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
 
     // 載入任務
     async function fetchTasks() {
@@ -47,13 +52,30 @@ export default function TaskPage() {
         }
     }
 
+    // 載入標籤
+    async function fetchTags() {
+        const res = await fetch("/api/tags");
+        if (res.ok) {
+            const data = await res.json();
+            setAllTags(data);
+        }
+    }
+
     // 建立任務
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+
+        const parsedTags = tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0);
+
+        const finalTags = [...new Set([...selectedTags, ...parsedTags])]; // 合併 + 去重
+
         const res = await fetch("/api/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description, priority, dueDate }),
+            body: JSON.stringify({ title, description, priority, dueDate, tags: finalTags }),
         });
 
         if (res.ok) {
@@ -61,7 +83,10 @@ export default function TaskPage() {
             setDescription("");
             setPriority("normal");
             setDueDate("");
+            setTags("");
+            setSelectedTags([]);
             fetchTasks();
+            fetchTags(); // 更新全域標籤清單
         } else {
             alert("Failed to create task");
         }
@@ -82,6 +107,21 @@ export default function TaskPage() {
         }
     }
 
+    // 移出 Inbox
+    async function moveOutFromInbox(id: number) {
+        const res = await fetch(`/api/tasks`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, isInbox: false, status: "todo" }),
+        });
+
+        if (res.ok) {
+            fetchTasks();
+        } else {
+            alert("Failed to move task out of Inbox");
+        }
+    }
+
     // 拖拽結束
     const onDragEnd = (result: any) => {
         const { destination, source, draggableId } = result;
@@ -92,24 +132,32 @@ export default function TaskPage() {
         ) {
             return;
         }
-
         const taskId = parseInt(draggableId);
         const newStatus = destination.droppableId;
         updateTaskStatus(taskId, newStatus);
     };
 
-    // 排序函數
+    // 取得週報
+    async function fetchWeeklyReport() {
+        const res = await fetch("/api/reports/weekly");
+        if (res.ok) {
+            const text = await res.text();
+            setWeeklyReport(text);
+        } else {
+            alert("❌ 生成週報失敗");
+        }
+    }
+
+    // 排序
     function sortTasks(tasks: Task[]): Task[] {
         return [...tasks].sort((a, b) => {
             if (sortBy === "dueDate") {
-                // 沒有截止日期的排後面
                 if (!a.DueDate) return 1;
                 if (!b.DueDate) return -1;
                 return new Date(a.DueDate).getTime() - new Date(b.DueDate).getTime();
             } else if (sortBy === "priority") {
                 return priorityOrder[a.Priority] - priorityOrder[b.Priority];
             } else {
-                // 預設用建立時間排序 (最新在前)
                 return new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime();
             }
         });
@@ -117,14 +165,41 @@ export default function TaskPage() {
 
     useEffect(() => {
         fetchTasks();
+        fetchTags();
     }, []);
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">任務管理 (Kanban)</h1>
+            <h1 className="text-2xl font-bold mb-4">任務管理 (Kanban + Tags)</h1>
 
-            {/* 新增任務表單 */}
-            <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+            {/* 📥 Inbox */}
+            <h2 className="text-xl font-semibold mt-6 mb-2">Inbox</h2>
+            <ul className="space-y-2">
+                {tasks.filter(t => t.IsInbox).map((task) => (
+                    <li key={task.ID} className="border p-3 rounded bg-yellow-50">
+                        <h2 className="font-semibold">{task.Title}</h2>
+                        <p className="text-sm text-gray-600">{task.Description}</p>
+                        {task.Tags && (
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                                {task.Tags.map((tag, i) => (
+                                    <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        <button
+                            onClick={() => moveOutFromInbox(task.ID)}
+                            className="mt-2 bg-green-500 text-white px-3 py-1 rounded"
+                        >
+                            移出 Inbox
+                        </button>
+                    </li>
+                ))}
+            </ul>
+
+            {/* ➕ 新增任務 */}
+            <form onSubmit={handleSubmit} className="space-y-4 mb-6 mt-6">
                 <input
                     type="text"
                     placeholder="Task Title"
@@ -154,6 +229,37 @@ export default function TaskPage() {
                     onChange={(e) => setDueDate(e.target.value)}
                     className="border p-2 w-full rounded"
                 />
+
+                {/* 選取既有標籤 */}
+                <label className="block text-sm font-semibold">標籤</label>
+                <div className="flex flex-wrap gap-2">
+                    {allTags.map((tag) => (
+                        <label key={tag} className="flex items-center gap-1 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={selectedTags.includes(tag)}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setSelectedTags([...selectedTags, tag]);
+                                    } else {
+                                        setSelectedTags(selectedTags.filter((t) => t !== tag));
+                                    }
+                                }}
+                            />
+                            {tag}
+                        </label>
+                    ))}
+                </div>
+
+                {/* 新增自訂標籤 */}
+                <input
+                    type="text"
+                    placeholder="輸入新標籤，用逗號分隔 (例: EC, Bug)"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    className="border p-2 w-full rounded"
+                />
+
                 <button
                     type="submit"
                     className="bg-blue-500 text-white px-4 py-2 rounded"
@@ -162,8 +268,8 @@ export default function TaskPage() {
                 </button>
             </form>
 
-            {/* 排序選單 */}
-            <div className="mb-4">
+            {/* 排序 & 週報 */}
+            <div className="mb-4 flex gap-2">
                 <label className="mr-2 text-sm font-semibold">排序方式：</label>
                 <select
                     value={sortBy}
@@ -174,9 +280,16 @@ export default function TaskPage() {
                     <option value="dueDate">截止日期</option>
                     <option value="priority">優先順序</option>
                 </select>
+
+                <button
+                    onClick={fetchWeeklyReport}
+                    className="ml-4 bg-purple-500 text-white px-3 py-2 rounded text-sm"
+                >
+                    輸出週報
+                </button>
             </div>
 
-            {/* Kanban 看板 */}
+            {/* 📌 Kanban */}
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="grid grid-cols-3 gap-4">
                     {Object.entries(columns).map(([status, title]) => (
@@ -188,7 +301,7 @@ export default function TaskPage() {
                                     className="bg-gray-100 p-4 rounded min-h-[300px]"
                                 >
                                     <h2 className="font-bold mb-3">{title}</h2>
-                                    {sortTasks(tasks.filter((t) => t.Status === status)).map(
+                                    {sortTasks(tasks.filter((t) => t.Status === status && !t.IsInbox)).map(
                                         (task, index) => (
                                             <Draggable
                                                 key={task.ID.toString()}
@@ -200,14 +313,19 @@ export default function TaskPage() {
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
                                                         {...provided.dragHandleProps}
-                                                        className="bg-white p-3 mb-2 rounded shadow"
+                                                        className="bg-white p-3 mb-2 rounded shadow cursor-pointer"
                                                     >
-                                                        <h3 className="font-semibold">
-                                                            {task.Title}
-                                                        </h3>
-                                                        <p className="text-sm text-gray-600">
-                                                            {task.Description}
-                                                        </p>
+                                                        <h3 className="font-semibold">{task.Title}</h3>
+                                                        <p className="text-sm text-gray-600">{task.Description}</p>
+                                                        {task.Tags && (
+                                                            <div className="flex gap-2 mt-2 flex-wrap">
+                                                                {task.Tags.map((tag, i) => (
+                                                                    <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         <p className="text-xs">
                                                             優先度:{" "}
                                                             <span
@@ -224,10 +342,7 @@ export default function TaskPage() {
                                                         </p>
                                                         {task.DueDate && (
                                                             <p className="text-xs text-gray-500">
-                                                                截止日期:{" "}
-                                                                {new Date(
-                                                                    task.DueDate
-                                                                ).toLocaleDateString()}
+                                                                截止日期: {new Date(task.DueDate).toLocaleDateString()}
                                                             </p>
                                                         )}
                                                     </div>
@@ -242,6 +357,24 @@ export default function TaskPage() {
                     ))}
                 </div>
             </DragDropContext>
+
+            {/* 📋 週報彈窗 */}
+            {weeklyReport && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded shadow-lg max-w-2xl w-full">
+                        <h2 className="text-xl font-bold mb-4">📋 本週工作週報</h2>
+                        <pre className="whitespace-pre-wrap text-sm bg-gray-100 p-4 rounded max-h-[400px] overflow-y-auto">
+                            {weeklyReport}
+                        </pre>
+                        <button
+                            onClick={() => setWeeklyReport(null)}
+                            className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+                        >
+                            關閉
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

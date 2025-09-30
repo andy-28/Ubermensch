@@ -24,8 +24,8 @@ model User {
   CreatedAt         DateTime  @default(now()) @map("CREATED_AT")
   UpdatedAt         DateTime  @updatedAt @map("UPDATED_AT")
 
-  Posts Post[]   // ❌ 不要 @map
-  Tasks Task[]   // ❌ 不要 @map
+  Posts Post[]
+  Tasks Task[]
 
   @@map("USER") // DB table name
 }
@@ -43,17 +43,20 @@ model Post {
 }
 
 model Task {
-  ID          Int      @id @default(autoincrement()) @map("ID")
-  Title       String   @map("TITLE")
-  Description String?  @map("DESCRIPTION")
-  Status      String   @default("todo") @map("STATUS")
-  Priority    String   @default("normal") @map("PRIORITY")
-  DueDate     DateTime? @map("DUE_DATE")
-  CreatedAt   DateTime @default(now()) @map("CREATED_AT")
-  UpdatedAt   DateTime @updatedAt @map("UPDATED_AT")
-  UserID      Int?     @map("USER_ID")
+  ID          Int      @id @default(autoincrement())
+  Title       String
+  Description String?
+  Status      String   @default("todo")  // todo, inprogress, done
+  IsInbox     Boolean  @default(true)    // 是否在收件匣
+  Priority    String   @default("normal")
+  DueDate     DateTime?
+  WorkDate    DateTime?
+  Tags        Json?    // ✅ 用 JSON 來存 ["EC","Bug"] 等標籤
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  CompletedAt DateTime?
+  Solution    String?
 
-  User User? @relation(fields: [UserID], references: [ID])
-
-  @@map("TASK")
+  UserID Int?
+  User   User? @relation(fields: [UserID], references: [ID])
 }
