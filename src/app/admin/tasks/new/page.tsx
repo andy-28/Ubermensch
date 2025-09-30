@@ -42,6 +42,7 @@ export default function TaskPage() {
     const [allTags, setAllTags] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState("created");
     const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     // 載入任務
     async function fetchTasks() {
@@ -313,6 +314,7 @@ export default function TaskPage() {
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
                                                         {...provided.dragHandleProps}
+                                                        onClick={() => setEditingTask(task)} // ✅ 點擊打開編輯彈窗
                                                         className="bg-white p-3 mb-2 rounded shadow cursor-pointer"
                                                     >
                                                         <h3 className="font-semibold">{task.Title}</h3>
@@ -320,36 +322,21 @@ export default function TaskPage() {
                                                         {task.Tags && (
                                                             <div className="flex gap-2 mt-2 flex-wrap">
                                                                 {task.Tags.map((tag, i) => (
-                                                                    <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                                                    <span
+                                                                        key={i}
+                                                                        className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded"
+                                                                    >
                                                                         {tag}
                                                                     </span>
                                                                 ))}
                                                             </div>
-                                                        )}
-                                                        <p className="text-xs">
-                                                            優先度:{" "}
-                                                            <span
-                                                                className={
-                                                                    task.Priority === "high"
-                                                                        ? "text-red-500"
-                                                                        : task.Priority === "low"
-                                                                            ? "text-green-500"
-                                                                            : "text-gray-700"
-                                                                }
-                                                            >
-                                                                {task.Priority}
-                                                            </span>
-                                                        </p>
-                                                        {task.DueDate && (
-                                                            <p className="text-xs text-gray-500">
-                                                                截止日期: {new Date(task.DueDate).toLocaleDateString()}
-                                                            </p>
                                                         )}
                                                     </div>
                                                 )}
                                             </Draggable>
                                         )
                                     )}
+
                                     {provided.placeholder}
                                 </div>
                             )}
@@ -375,6 +362,76 @@ export default function TaskPage() {
                     </div>
                 </div>
             )}
+            {editingTask && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded shadow-lg max-w-lg w-full">
+                        <h2 className="text-xl font-bold mb-4">編輯任務</h2>
+
+                        <input
+                            type="text"
+                            value={editingTask.Title}
+                            onChange={(e) => setEditingTask({ ...editingTask, Title: e.target.value })}
+                            className="border p-2 w-full mb-2 rounded"
+                        />
+                        <textarea
+                            value={editingTask.Description || ""}
+                            onChange={(e) => setEditingTask({ ...editingTask, Description: e.target.value })}
+                            className="border p-2 w-full mb-2 rounded"
+                        />
+
+                        {/* 標籤編輯 */}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {allTags.map((tag) => (
+                                <label key={tag} className="flex items-center gap-1 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingTask.Tags?.includes(tag)}
+                                        onChange={(e) => {
+                                            let newTags = editingTask.Tags ? [...editingTask.Tags] : [];
+                                            if (e.target.checked) {
+                                                if (!newTags.includes(tag)) newTags.push(tag);
+                                            } else {
+                                                newTags = newTags.filter((t) => t !== tag);
+                                            }
+                                            setEditingTask({ ...editingTask, Tags: newTags });
+                                        }}
+                                    />
+                                    {tag}
+                                </label>
+                            ))}
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setEditingTask(null)}
+                                className="px-4 py-2 rounded bg-gray-300"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    await fetch("/api/tasks", {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            id: editingTask.ID,
+                                            title: editingTask.Title,
+                                            description: editingTask.Description,
+                                            tags: editingTask.Tags,
+                                        }),
+                                    });
+                                    setEditingTask(null);
+                                    fetchTasks();
+                                }}
+                                className="px-4 py-2 rounded bg-blue-500 text-white"
+                            >
+                                儲存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
