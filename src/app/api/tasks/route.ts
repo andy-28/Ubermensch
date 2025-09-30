@@ -1,9 +1,9 @@
-// app/api/tasks/route.ts
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// 取得任務列表
 export async function GET() {
     try {
         const tasks = await prisma.task.findMany({
@@ -16,6 +16,7 @@ export async function GET() {
     }
 }
 
+// 建立任務
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -36,5 +37,27 @@ export async function POST(req: Request) {
     } catch (error) {
         console.error(error);
         return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
+    }
+}
+
+// 更新任務狀態 or 屬性
+export async function PATCH(req: Request) {
+    try {
+        const body = await req.json();
+        const { id, status, priority, dueDate } = body;
+
+        const updatedTask = await prisma.task.update({
+            where: { ID: id },
+            data: {
+                ...(status && { Status: status }),
+                ...(priority && { Priority: priority }),
+                ...(dueDate && { DueDate: new Date(dueDate) }),
+            },
+        });
+
+        return NextResponse.json(updatedTask);
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
     }
 }
