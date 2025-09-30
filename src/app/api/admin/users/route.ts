@@ -3,11 +3,21 @@ import { prisma } from "@/lib/prisma";
 
 // 取得所有會員
 export async function GET() {
-    const users = await prisma.user.findMany({
-        select: { id: true, email: true, isVerified: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json(users);
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                ID: true,
+                Email: true,
+                IsVerified: true,
+                CreatedAt: true,
+            },
+            orderBy: { CreatedAt: "desc" },
+        });
+        return NextResponse.json(users, { status: 200 });
+    } catch (err) {
+        console.error("GET /api/admin/users error:", err);
+        return NextResponse.json({ message: "伺服器錯誤" }, { status: 500 });
+    }
 }
 
 // 新增會員
@@ -21,14 +31,16 @@ export async function POST(req: Request) {
 
         const user = await prisma.user.create({
             data: {
-                email,
-                password, // ⚠️ demo 先存明文，之後要改 bcrypt
-
+                Email: email,
+                Password: password, // ⚠️ 目前明文，之後要用 bcrypt hash
+                Role: "user",       // 有 default 但寫上更清楚
+                IsVerified: false,  // 有 default 但可明確指定
             },
         });
 
-        return NextResponse.json(user);
+        return NextResponse.json(user, { status: 201 });
     } catch (err) {
+        console.error("POST /api/admin/users error:", err);
         return NextResponse.json({ message: "伺服器錯誤" }, { status: 500 });
     }
 }

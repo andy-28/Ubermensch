@@ -13,8 +13,16 @@ import {
     TableRow,
 } from "@/components/ui/table"
 
+type User = {
+    ID: number
+    Email: string
+    Role: string
+    IsVerified: boolean
+    CreatedAt: string
+}
+
 export default function UserListPage() {
-    const [users, setUsers] = useState<any[]>([])
+    const [users, setUsers] = useState<User[]>([])
 
     useEffect(() => {
         fetch("/api/admin/users")
@@ -51,22 +59,22 @@ export default function UserListPage() {
                             </TableRow>
                         ) : (
                             users.map((u) => (
-                                <TableRow key={u.id}>
-                                    <TableCell>{u.id}</TableCell>
-                                    <TableCell>{u.email}</TableCell>
-                                    <TableCell>{u.role}</TableCell>
+                                <TableRow key={u.ID}>
+                                    <TableCell>{u.ID}</TableCell>
+                                    <TableCell>{u.Email}</TableCell>
+                                    <TableCell>{u.Role}</TableCell>
                                     <TableCell>
-                                        {u.isVerified ? (
+                                        {u.IsVerified ? (
                                             <span className="text-green-600 font-bold">已驗證</span>
                                         ) : (
                                             <span className="text-red-500 font-bold">未驗證</span>
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        {new Date(u.createdAt).toLocaleString()}
+                                        {new Date(u.CreatedAt).toLocaleString()}
                                     </TableCell>
                                     <TableCell>
-                                        <Link href={`/admin/users/${u.id}`}>
+                                        <Link href={`/admin/users/${u.ID}`}>
                                             <Button variant="outline" size="sm">
                                                 編輯
                                             </Button>

@@ -10,7 +10,7 @@ const menuItems = [
     { href: "/admin/users", label: "會員管理" },
     { href: "/admin/posts", label: "文章管理" },
     { href: "/admin/settings", label: "系統設定" },
-    { href: "/tasks/new", label: "建立任務" }, // 🔥 新增這一行
+    { href: "/admin/tasks/new", label: "建立任務" }, // 🔥 新增這一行
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -29,8 +29,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             key={item.href}
                             href={item.href}
                             className={`rounded px-3 py-2 text-sm font-medium transition ${pathname.startsWith(item.href)
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-blue-600 text-white"
+                                : "text-gray-700 hover:bg-gray-100"
                                 }`}
                         >
                             {item.label}
